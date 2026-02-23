@@ -1,0 +1,48 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: doodle-postgres
+    environment:
+      POSTGRES_DB: doodle
+      POSTGRES_USER: doodle
+      POSTGRES_PASSWORD: doodle
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doodle -d doodle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: doodle-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: doodle
+      DB_USER: doodle
+      DB_PASS: doodle
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: doodle-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
