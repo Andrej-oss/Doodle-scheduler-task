@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type TimeSlot } from '@/lib/api';
 import { useState, use } from 'react';
 
-const HOURS = Array.from({ length: 10 }, (_, i) => i + 8); // 8:00 - 17:00
+const HOURS = Array.from({ length: 10 }, (_, i) => i + 8);
 const DAYS = 7;
 
 function getWeekDays(base: Date): Date[] {

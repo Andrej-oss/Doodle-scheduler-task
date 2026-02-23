@@ -1,10 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type Calendar, type MeetingResponse } from '@/lib/api';
+import { useCurrentUser } from '@/lib/user-context';
 import Link from 'next/link';
-
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
+import { useState } from 'react';
 
 function CalendarCard({ calendar }: { calendar: Calendar }) {
   return (
@@ -15,7 +15,7 @@ function CalendarCard({ calendar }: { calendar: Calendar }) {
         </div>
         <h3 className="font-semibold text-gray-900 group-hover:text-[#0A5C48]">{calendar.name}</h3>
         <p className="text-xs text-gray-400 mt-1">
-          Created {new Date(calendar.createdAt).toLocaleDateString()}
+          {new Date(calendar.createdAt).toLocaleDateString()}
         </p>
       </div>
     </Link>
@@ -44,21 +44,78 @@ function MeetingCard({ meeting }: { meeting: MeetingResponse }) {
   );
 }
 
+function UserSetup({ onSet }: { onSet: (id: string) => void }) {
+  const queryClient = useQueryClient();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+
+  const createUser = useMutation({
+    mutationFn: () => api.users.create({ username, email }),
+    onSuccess: (user) => {
+      queryClient.invalidateQueries();
+      onSet(user.id);
+    },
+  });
+
+  return (
+    <div className="max-w-sm mx-auto mt-20 space-y-4">
+      <div className="text-center mb-6">
+        <div className="w-12 h-12 rounded-full bg-[#0A5C48] flex items-center justify-center mx-auto mb-3">
+          <span className="text-white font-bold text-lg">D</span>
+        </div>
+        <h1 className="text-xl font-bold">Doodle Scheduler</h1>
+        <p className="text-sm text-gray-500 mt-1">Create your account to get started</p>
+      </div>
+      <input
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#0A5C48]"
+      />
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        type="email"
+        placeholder="Email"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#0A5C48]"
+      />
+      {createUser.isError && (
+        <p className="text-xs text-red-500">{(createUser.error as Error).message}</p>
+      )}
+      <button
+        disabled={!username.trim() || !email.trim() || createUser.isPending}
+        onClick={() => createUser.mutate()}
+        className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-[#0A5C48] hover:bg-[#0E3830] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {createUser.isPending ? 'Creating…' : 'Get Started'}
+      </button>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const { userId, setUserId } = useCurrentUser();
+
   const { data: calendars, isLoading: loadingCals } = useQuery({
-    queryKey: ['calendars', DEMO_USER_ID],
-    queryFn: () => api.calendars.listByUser(DEMO_USER_ID),
+    queryKey: ['calendars', userId],
+    queryFn: () => api.calendars.listByUser(userId!),
+    enabled: !!userId,
   });
 
   const { data: meetings, isLoading: loadingMeetings } = useQuery({
-    queryKey: ['meetings', DEMO_USER_ID],
-    queryFn: () => api.meetings.listByUser(DEMO_USER_ID),
+    queryKey: ['meetings', userId],
+    queryFn: () => api.meetings.listByUser(userId!),
+    enabled: !!userId,
   });
+
+  if (!userId) {
+    return <UserSetup onSet={setUserId} />;
+  }
 
   return (
     <div className="space-y-8">
       <div className="rounded-2xl p-8 text-white bg-[#0A5C48]">
-        <h1 className="text-2xl font-bold mb-1">Welcome back</h1>
+        <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
         <p className="text-sm opacity-80">Manage your calendars and schedule meetings</p>
         <div className="mt-4 flex gap-3">
           <Link href="/availability" className="bg-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors text-[#0A5C48]">
