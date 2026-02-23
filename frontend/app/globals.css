@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --doodle-primary: #0A5C48;
+  --doodle-primary-hover: #0E3830;
+  --doodle-light: #ACC8C1;
+  --doodle-callout: #d7efdc;
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--doodle-primary);
+  --color-primary-hover: var(--doodle-primary-hover);
+  --color-primary-light: var(--doodle-light);
+  --color-callout: var(--doodle-callout);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}

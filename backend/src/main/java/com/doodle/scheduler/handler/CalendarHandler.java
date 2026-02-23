@@ -5,6 +5,7 @@ import com.doodle.scheduler.service.CalendarService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatus.CREATED;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -21,7 +22,7 @@ public class CalendarHandler {
     public Mono<ServerResponse> create(@NonNull final ServerRequest request) {
         return request.bodyToMono(CreateCalendarRequest.class)
                 .flatMap(calendarService::create)
-                .flatMap(calendar -> ServerResponse.status(HttpStatus.CREATED).bodyValue(calendar));
+                .flatMap(calendar -> ServerResponse.status(CREATED).bodyValue(calendar));
     }
 
     public Mono<ServerResponse> findById(@NonNull final ServerRequest request) {
@@ -32,6 +33,6 @@ public class CalendarHandler {
 
     public Mono<ServerResponse> findByUserId(@NonNull final ServerRequest request) {
         final UUID userId = UUID.fromString(request.pathVariable("userId"));
-        return ServerResponse.ok().body(calendarService.findByUserId(userId), com.doodle.scheduler.domain.Calendar.class);
+        return ServerResponse.ok().body(calendarService.findByUserId(userId), Calendar.class);
     }
 }
