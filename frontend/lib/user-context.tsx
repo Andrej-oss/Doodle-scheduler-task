@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface UserContextValue {
   userId: string | null;
@@ -10,12 +10,10 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserIdState] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('userId');
-    if (stored) setUserIdState(stored);
-  }, []);
+  const [userId, setUserIdState] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('userId');
+  });
 
   const setUserId = (id: string) => {
     localStorage.setItem('userId', id);

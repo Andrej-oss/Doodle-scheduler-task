@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
+import Link from 'next/link';
 import './globals.css';
 import { Providers } from '@/lib/providers';
 
@@ -22,8 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
               <span className="font-semibold text-lg" style={{ color: '#0A5C48' }}>Doodle Scheduler</span>
               <nav className="ml-6 flex gap-4 text-sm text-gray-600">
-                <a href="/" className="hover:text-[#0A5C48]">Dashboard</a>
-                <a href="/availability" className="hover:text-[#0A5C48]">Availability</a>
+                <Link href="/" className="hover:text-[#0A5C48]">Dashboard</Link>
+                <Link href="/availability" className="hover:text-[#0A5C48]">Availability</Link>
               </nav>
             </div>
           </header>
