@@ -13,19 +13,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SlotIntegrationTest extends AbstractIntegrationTest {
+
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-02-24T10:00:00Z"), ZoneOffset.UTC);
 
     @Autowired
     private WebTestClient webTestClient;
 
     @Test
     void shouldCreateSlotAndQueryAvailability() {
-        // create user
-        final User user = webTestClient.post().uri("/api/v1/users")
+        final var user = webTestClient.post().uri("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new CreateUserRequest("slot_user", "slot_user@test.com"))
                 .exchange()
@@ -35,8 +39,7 @@ class SlotIntegrationTest extends AbstractIntegrationTest {
         assertThat(user).isNotNull();
         assertThat(user.id()).isNotNull();
 
-        // create calendar
-        final Calendar calendar = webTestClient.post().uri("/api/v1/calendars")
+        final var calendar = webTestClient.post().uri("/api/v1/calendars")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new CreateCalendarRequest(user.id(), "Work"))
                 .exchange()
@@ -45,11 +48,10 @@ class SlotIntegrationTest extends AbstractIntegrationTest {
                 .returnResult().getResponseBody();
         assertThat(calendar).isNotNull();
 
-        // create slot
-        final LocalDateTime start = LocalDateTime.now().plusHours(1).withNano(0);
-        final LocalDateTime end = start.plusHours(1);
+        final var start = LocalDateTime.now(FIXED_CLOCK).plusHours(1).withNano(0);
+        final var end = start.plusHours(1);
 
-        final TimeSlot slot = webTestClient.post()
+        final var slot = webTestClient.post()
                 .uri("/api/v1/calendars/{id}/slots", calendar.id())
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new CreateSlotRequest(start, end))
@@ -60,7 +62,6 @@ class SlotIntegrationTest extends AbstractIntegrationTest {
         assertThat(slot).isNotNull();
         assertThat(slot.status()).isEqualTo(SlotStatus.FREE);
 
-        // query availability
         webTestClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/users/{userId}/availability")
@@ -78,7 +79,7 @@ class SlotIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void shouldReturnBadRequestWhenEndTimeBeforeStartTime() {
-        final LocalDateTime now = LocalDateTime.now();
+        final var now = LocalDateTime.now(FIXED_CLOCK);
 
         webTestClient.post().uri("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -88,8 +89,6 @@ class SlotIntegrationTest extends AbstractIntegrationTest {
                 .expectBody(User.class)
                 .returnResult().getResponseBody();
 
-        // we just verify the validation logic is reachable
-        // actual bad request is caught by service layer
         assertThat(now).isBefore(now.plusSeconds(1));
     }
 }

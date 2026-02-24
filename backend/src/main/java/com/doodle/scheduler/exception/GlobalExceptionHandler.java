@@ -9,13 +9,24 @@ import org.springframework.web.server.ServerWebExchange;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(NotFoundException.class)
-    public ProblemDetail handleNotFound(final NotFoundException ex, final ServerWebExchange exchange) {
+    @ExceptionHandler({
+            UserNotFoundException.class,
+            CalendarNotFoundException.class,
+            SlotNotFoundException.class,
+            MeetingNotFoundException.class
+    })
+    public ProblemDetail handleNotFound(final RuntimeException ex, final ServerWebExchange exchange) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ProblemDetail handleConflict(final ConflictException ex, final ServerWebExchange exchange) {
+    @ExceptionHandler({
+            EmailAlreadyInUseException.class,
+            UsernameAlreadyInUseException.class,
+            SlotOverlapException.class,
+            SlotAlreadyBusyException.class,
+            SlotLinkedToMeetingException.class
+    })
+    public ProblemDetail handleConflict(final RuntimeException ex, final ServerWebExchange exchange) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 

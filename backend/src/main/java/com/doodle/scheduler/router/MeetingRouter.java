@@ -19,20 +19,24 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 @Configuration
 public class MeetingRouter {
 
+    static final String MEETINGS = "/api/v1/meetings";
+    static final String MEETING_BY_ID = "/api/v1/meetings/{meetingId}";
+    static final String USER_MEETINGS = "/api/v1/users/{userId}/meetings";
+
     @Bean
     @RouterOperations({
-            @RouterOperation(path = "/api/v1/meetings", method = RequestMethod.POST,
+            @RouterOperation(path = MEETINGS, method = RequestMethod.POST,
                     beanClass = MeetingHandler.class, beanMethod = "schedule",
                     operation = @Operation(operationId = "scheduleMeeting", tags = "Meetings",
                             summary = "Convert a free slot into a meeting with participants",
                             requestBody = @RequestBody(content = @Content(schema = @Schema(implementation = CreateMeetingRequest.class))),
                             responses = @ApiResponse(responseCode = "201", description = "Meeting scheduled"))),
-            @RouterOperation(path = "/api/v1/meetings/{meetingId}", method = RequestMethod.GET,
+            @RouterOperation(path = MEETING_BY_ID, method = RequestMethod.GET,
                     beanClass = MeetingHandler.class, beanMethod = "findById",
                     operation = @Operation(operationId = "getMeetingById", tags = "Meetings",
                             summary = "Get meeting details with participants",
                             responses = @ApiResponse(responseCode = "200", description = "Meeting found"))),
-            @RouterOperation(path = "/api/v1/users/{userId}/meetings", method = RequestMethod.GET,
+            @RouterOperation(path = USER_MEETINGS, method = RequestMethod.GET,
                     beanClass = MeetingHandler.class, beanMethod = "findByUser",
                     operation = @Operation(operationId = "getUserMeetings", tags = "Meetings",
                             summary = "List all meetings organized by a user",
@@ -40,9 +44,9 @@ public class MeetingRouter {
     })
     public RouterFunction<ServerResponse> meetingRoutes(final MeetingHandler handler) {
         return RouterFunctions.route()
-                .POST("/api/v1/meetings", handler::schedule)
-                .GET("/api/v1/meetings/{meetingId}", handler::findById)
-                .GET("/api/v1/users/{userId}/meetings", handler::findByUser)
+                .POST(MEETINGS, handler::schedule)
+                .GET(MEETING_BY_ID, handler::findById)
+                .GET(USER_MEETINGS, handler::findByUser)
                 .build();
     }
 }

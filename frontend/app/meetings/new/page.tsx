@@ -1,9 +1,9 @@
 'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { api, type TimeSlot, type Calendar } from '@/lib/api';
+import { api, type TimeSlot, type Calendar, type User } from '@/lib/api';
 import { useCurrentUser } from '@/lib/user-context';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Step = 1 | 2 | 3;
@@ -19,8 +19,11 @@ export default function NewMeetingPage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [participantInput, setParticipantInput] = useState('');
-  const [participantIds, setParticipantIds] = useState<string[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [participants, setParticipants] = useState<User[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const { data: calendars = [] } = useQuery({
     queryKey: ['calendars', userId],
@@ -34,6 +37,35 @@ export default function NewMeetingPage() {
     enabled: !!selectedCalendar,
   });
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(participantSearch), 300);
+    return () => clearTimeout(t);
+  }, [participantSearch]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ['users-search', debouncedSearch],
+    queryFn: () => api.users.search(debouncedSearch),
+    enabled: debouncedSearch.length >= 2,
+  });
+
+  const addParticipant = (user: User) => {
+    if (!participants.find((p) => p.id === user.id)) {
+      setParticipants((prev) => [...prev, user]);
+    }
+    setParticipantSearch('');
+    setShowDropdown(false);
+  };
+
   const scheduleMeeting = useMutation({
     mutationFn: () =>
       api.meetings.schedule({
@@ -41,7 +73,7 @@ export default function NewMeetingPage() {
         organizerId: userId!,
         title,
         description: description || undefined,
-        participantIds,
+        participantIds: participants.map((p) => p.id),
       }),
     onSuccess: () => {
       setStep(3);
@@ -53,14 +85,6 @@ export default function NewMeetingPage() {
     router.push('/');
     return null;
   }
-
-  const addParticipant = () => {
-    const trimmed = participantInput.trim();
-    if (trimmed && !participantIds.includes(trimmed)) {
-      setParticipantIds((prev) => [...prev, trimmed]);
-      setParticipantInput('');
-    }
-  };
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -176,27 +200,41 @@ export default function NewMeetingPage() {
 
           <div>
             <label className="block text-sm font-medium mb-1">Participants</label>
-            <div className="flex gap-2">
+            <div className="relative" ref={searchRef}>
               <input
-                value={participantInput}
-                onChange={(e) => setParticipantInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
-                placeholder="Paste user UUID…"
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0A5C48]"
+                value={participantSearch}
+                onChange={(e) => { setParticipantSearch(e.target.value); setShowDropdown(true); }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Search by name or email…"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0A5C48]"
               />
-              <button
-                onClick={addParticipant}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#0A5C48] hover:bg-[#0E3830] transition-colors"
-              >
-                Add
-              </button>
+              {showDropdown && debouncedSearch.length >= 2 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-gray-400">No users found</p>
+                  ) : (
+                    searchResults
+                      .filter((u) => !participants.find((p) => p.id === u.id))
+                      .map((u) => (
+                        <button
+                          key={u.id}
+                          onMouseDown={() => addParticipant(u)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-[#d7efdc] hover:text-[#0A5C48] transition-colors"
+                        >
+                          <span className="font-medium">{u.username}</span>
+                          <span className="text-gray-400 ml-2">{u.email}</span>
+                        </button>
+                      ))
+                  )}
+                </div>
+              )}
             </div>
-            {participantIds.length > 0 && (
+            {participants.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {participantIds.map((id) => (
-                  <span key={id} className="bg-[#d7efdc] text-[#0A5C48] text-xs px-2 py-1 rounded-lg flex items-center gap-1">
-                    {id.slice(0, 8)}…
-                    <button onClick={() => setParticipantIds((prev) => prev.filter((p) => p !== id))}>×</button>
+                {participants.map((p) => (
+                  <span key={p.id} className="bg-[#d7efdc] text-[#0A5C48] text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+                    {p.username}
+                    <button onClick={() => setParticipants((prev) => prev.filter((x) => x.id !== p.id))}>×</button>
                   </span>
                 ))}
               </div>

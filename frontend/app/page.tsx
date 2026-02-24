@@ -93,6 +93,63 @@ function UserSetup({ onSet }: { onSet: (id: string) => void }) {
   );
 }
 
+function CreateCalendarForm({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const create = useMutation({
+    mutationFn: () => api.calendars.create({ userId, name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendars', userId] });
+      setName('');
+      setOpen(false);
+    },
+  });
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center text-gray-400 w-full hover:border-[#0A5C48] hover:text-[#0A5C48] transition-colors text-sm"
+      >
+        + New Calendar
+      </button>
+    );
+  }
+
+  return (
+    <div className="border border-[#0A5C48] rounded-xl p-5 space-y-3">
+      <p className="text-sm font-medium">New Calendar</p>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="e.g. Work, Personal…"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0A5C48]"
+        autoFocus
+      />
+      {create.isError && (
+        <p className="text-xs text-red-500">{(create.error as Error).message}</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setOpen(false)}
+          className="flex-1 py-2 rounded-lg text-sm border border-gray-200 hover:border-gray-300"
+        >
+          Cancel
+        </button>
+        <button
+          disabled={!name.trim() || create.isPending}
+          onClick={() => create.mutate()}
+          className="flex-1 py-2 rounded-lg text-sm font-medium text-white bg-[#0A5C48] hover:bg-[#0E3830] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {create.isPending ? 'Creating…' : 'Create'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { userId, setUserId } = useCurrentUser();
 
@@ -136,13 +193,10 @@ export default function DashboardPage() {
                 <div key={i} className="border border-gray-100 rounded-xl p-5 animate-pulse h-28 bg-gray-50" />
               ))}
             </div>
-          ) : calendars && calendars.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3">
-              {calendars.map((cal) => <CalendarCard key={cal.id} calendar={cal} />)}
-            </div>
           ) : (
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center text-gray-400">
-              <p className="text-sm">No calendars yet</p>
+            <div className="grid grid-cols-2 gap-3">
+              {(calendars ?? []).map((cal) => <CalendarCard key={cal.id} calendar={cal} />)}
+              <CreateCalendarForm userId={userId} />
             </div>
           )}
         </div>

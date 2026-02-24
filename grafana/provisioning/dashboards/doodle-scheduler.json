@@ -1,0 +1,153 @@
+{
+  "uid": "doodle-scheduler-v1",
+  "title": "Doodle Scheduler",
+  "tags": ["doodle", "scheduler"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Slots Created (total)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": 0 }] } } },
+      "targets": [{ "expr": "slots_created_total", "legendFormat": "slots", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "title": "Meetings Scheduled (total)",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": 0 }] } } },
+      "targets": [{ "expr": "meetings_scheduled_total", "legendFormat": "meetings", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "title": "HTTP Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"doodle-scheduler\"}[1m])) by (uri, method)",
+          "legendFormat": "{{method}} {{uri}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Error Rate 5xx (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "fixedColor": "red", "mode": "fixed" }, "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"doodle-scheduler\", status=~\"5..\"}[1m])) by (uri)",
+          "legendFormat": "{{uri}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP P95 Latency (s)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"doodle-scheduler\"}[1m])) by (le, uri))",
+          "legendFormat": "p95 {{uri}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM Heap Memory",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "sum(jvm_memory_used_bytes{job=\"doodle-scheduler\", area=\"heap\"})",
+          "legendFormat": "used",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(jvm_memory_max_bytes{job=\"doodle-scheduler\", area=\"heap\"})",
+          "legendFormat": "max",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "process_cpu_usage{job=\"doodle-scheduler\"}",
+          "legendFormat": "process cpu",
+          "refId": "A"
+        },
+        {
+          "expr": "system_cpu_usage{job=\"doodle-scheduler\"}",
+          "legendFormat": "system cpu",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Slots Created Rate (per min)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "rate(slots_created_total[1m]) * 60",
+          "legendFormat": "slots/min",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Meetings Scheduled Rate (per min)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "tooltip": { "mode": "multi" } },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2 } } },
+      "targets": [
+        {
+          "expr": "rate(meetings_scheduled_total[1m]) * 60",
+          "legendFormat": "meetings/min",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

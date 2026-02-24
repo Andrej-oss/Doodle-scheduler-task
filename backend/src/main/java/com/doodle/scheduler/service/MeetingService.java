@@ -5,25 +5,34 @@ import com.doodle.scheduler.domain.MeetingParticipant;
 import com.doodle.scheduler.domain.SlotStatus;
 import com.doodle.scheduler.dto.CreateMeetingRequest;
 import com.doodle.scheduler.dto.MeetingResponse;
-import com.doodle.scheduler.exception.ConflictException;
-import com.doodle.scheduler.exception.NotFoundException;
+import com.doodle.scheduler.exception.MeetingNotFoundException;
+import com.doodle.scheduler.exception.SlotAlreadyBusyException;
+import com.doodle.scheduler.exception.SlotNotFoundException;
 import com.doodle.scheduler.repository.MeetingParticipantRepository;
 import com.doodle.scheduler.repository.MeetingRepository;
 import com.doodle.scheduler.repository.TimeSlotRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeetingService {
+
+    private static final String ERR_SLOT_NOT_FOUND = "Slot not found: ";
+    private static final String ERR_SLOT_ALREADY_BUSY = "Slot is already busy: ";
+    private static final String ERR_MEETING_NOT_FOUND = "Meeting not found: ";
+    private static final String METRIC_MEETINGS_SCHEDULED = "meetings_scheduled_total";
 
     private final MeetingRepository meetingRepository;
     private final MeetingParticipantRepository participantRepository;
@@ -32,13 +41,15 @@ public class MeetingService {
 
     @Transactional
     public Mono<MeetingResponse> schedule(@NonNull final CreateMeetingRequest request) {
+        log.info("Scheduling meeting: title='{}', slotId={}, organizerId={}", request.title(), request.slotId(), request.organizerId());
         return timeSlotRepository.findById(request.slotId())
-                .switchIfEmpty(Mono.error(new NotFoundException("Slot not found: " + request.slotId())))
+                .switchIfEmpty(Mono.error(new SlotNotFoundException(ERR_SLOT_NOT_FOUND + request.slotId())))
                 .flatMap(slot -> {
                     if (slot.status() == SlotStatus.BUSY) {
-                        return Mono.error(new ConflictException("Slot is already busy: " + request.slotId()));
+                        log.warn("Slot already busy: slotId={}", request.slotId());
+                        return Mono.error(new SlotAlreadyBusyException(ERR_SLOT_ALREADY_BUSY + request.slotId()));
                     }
-                    final Meeting meeting = Meeting.builder()
+                    final var meeting = Meeting.builder()
                             .title(request.title())
                             .description(request.description())
                             .organizerId(request.organizerId())
@@ -53,14 +64,19 @@ public class MeetingService {
                             })
                             .flatMap(saved -> saveParticipants(saved, request.participantIds())
                                     .collectList()
-                                    .map(participants -> toResponse(saved, slot.startTime(), slot.endTime(), participants)));
+                                    .map(participants -> toResponse(saved, slot.startTime(), slot.endTime(),
+                                            participants.stream().map(MeetingParticipant::userId).toList())));
                 })
-                .doOnSuccess(m -> meterRegistry.counter("meetings_scheduled_total").increment());
+                .doOnSuccess(m -> {
+                    log.info("Meeting scheduled: id={}, title='{}', participants={}", m.id(), m.title(), m.participantIds().size());
+                    meterRegistry.counter(METRIC_MEETINGS_SCHEDULED).increment();
+                });
     }
 
     public Mono<MeetingResponse> findById(@NonNull final UUID meetingId) {
+        log.debug("Finding meeting by id={}", meetingId);
         return meetingRepository.findById(meetingId)
-                .switchIfEmpty(Mono.error(new NotFoundException("Meeting not found: " + meetingId)))
+                .switchIfEmpty(Mono.error(new MeetingNotFoundException(ERR_MEETING_NOT_FOUND + meetingId)))
                 .flatMap(meeting -> timeSlotRepository.findById(meeting.slotId())
                         .flatMap(slot -> participantRepository.findAllByMeetingId(meetingId)
                                 .map(MeetingParticipant::userId)
@@ -69,6 +85,7 @@ public class MeetingService {
     }
 
     public Flux<MeetingResponse> findByUser(@NonNull final UUID userId) {
+        log.debug("Finding meetings for userId={}", userId);
         return meetingRepository.findAllByOrganizerId(userId)
                 .flatMap(meeting -> timeSlotRepository.findById(meeting.slotId())
                         .flatMap(slot -> participantRepository.findAllByMeetingId(meeting.id())
@@ -91,8 +108,8 @@ public class MeetingService {
     }
 
     private MeetingResponse toResponse(@NonNull final Meeting meeting,
-                                       @NonNull final java.time.LocalDateTime startTime,
-                                       @NonNull final java.time.LocalDateTime endTime,
+                                       @NonNull final LocalDateTime startTime,
+                                       @NonNull final LocalDateTime endTime,
                                        @NonNull final List<UUID> participantIds) {
         return new MeetingResponse(
                 meeting.id(),

@@ -6,6 +6,7 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,6 +26,14 @@ public interface TimeSlotRepository extends ReactiveCrudRepository<TimeSlot, UUI
                                                String status,
                                                LocalDateTime from,
                                                LocalDateTime to);
+
+    @Query("""
+            SELECT COUNT(*) FROM time_slots
+            WHERE calendar_id = :calendarId
+              AND start_time < :endTime
+              AND end_time > :startTime
+            """)
+    Mono<Long> countOverlapping(UUID calendarId, LocalDateTime startTime, LocalDateTime endTime);
 
     @Query("""
             SELECT ts.* FROM time_slots ts

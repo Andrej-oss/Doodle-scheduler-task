@@ -56,5 +56,20 @@ services:
     depends_on:
       - backend
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: doodle-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/doodle-scheduler.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
+  grafana_data:

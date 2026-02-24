@@ -21,48 +21,55 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TimeSlotHandler {
 
+    private static final String PATH_CALENDAR_ID = "calendarId";
+    private static final String PATH_SLOT_ID = "slotId";
+    private static final String PATH_USER_ID = "userId";
+    private static final String QUERY_STATUS = "status";
+    private static final String QUERY_FROM = "from";
+    private static final String QUERY_TO = "to";
+
     private final TimeSlotService timeSlotService;
 
     public Mono<ServerResponse> create(@NonNull final ServerRequest request) {
-        final UUID calendarId = UUID.fromString(request.pathVariable("calendarId"));
+        final var calendarId = UUID.fromString(request.pathVariable(PATH_CALENDAR_ID));
         return request.bodyToMono(CreateSlotRequest.class)
                 .flatMap(req -> timeSlotService.create(calendarId, req))
                 .flatMap(slot -> ServerResponse.status(HttpStatus.CREATED).bodyValue(slot));
     }
 
     public Mono<ServerResponse> update(@NonNull final ServerRequest request) {
-        final UUID slotId = UUID.fromString(request.pathVariable("slotId"));
+        final var slotId = UUID.fromString(request.pathVariable(PATH_SLOT_ID));
         return request.bodyToMono(UpdateSlotRequest.class)
                 .flatMap(req -> timeSlotService.update(slotId, req))
                 .flatMap(slot -> ServerResponse.ok().bodyValue(slot));
     }
 
     public Mono<ServerResponse> delete(@NonNull final ServerRequest request) {
-        final UUID slotId = UUID.fromString(request.pathVariable("slotId"));
+        final var slotId = UUID.fromString(request.pathVariable(PATH_SLOT_ID));
         return timeSlotService.delete(slotId)
                 .then(ServerResponse.noContent().build());
     }
 
     public Mono<ServerResponse> findByCalendar(@NonNull final ServerRequest request) {
-        final UUID calendarId = UUID.fromString(request.pathVariable("calendarId"));
-        final SlotStatus status = request.queryParam("status")
+        final var calendarId = UUID.fromString(request.pathVariable(PATH_CALENDAR_ID));
+        final var status = request.queryParam(QUERY_STATUS)
                 .map(SlotStatus::valueOf)
                 .orElse(null);
-        final LocalDateTime from = request.queryParam("from")
+        final var from = request.queryParam(QUERY_FROM)
                 .map(LocalDateTime::parse)
                 .orElse(null);
-        final LocalDateTime to = request.queryParam("to")
+        final var to = request.queryParam(QUERY_TO)
                 .map(LocalDateTime::parse)
                 .orElse(null);
         return ServerResponse.ok().body(timeSlotService.findByCalendar(calendarId, status, from, to), TimeSlot.class);
     }
 
     public Mono<ServerResponse> getAvailability(@NonNull final ServerRequest request) {
-        final UUID userId = UUID.fromString(request.pathVariable("userId"));
-        final LocalDateTime from = request.queryParam("from")
+        final var userId = UUID.fromString(request.pathVariable(PATH_USER_ID));
+        final var from = request.queryParam(QUERY_FROM)
                 .map(LocalDateTime::parse)
                 .orElse(LocalDateTime.now());
-        final LocalDateTime to = request.queryParam("to")
+        final var to = request.queryParam(QUERY_TO)
                 .map(LocalDateTime::parse)
                 .orElse(LocalDateTime.now().plusDays(7));
         return ServerResponse.ok().body(

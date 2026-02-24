@@ -17,6 +17,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MeetingHandler {
 
+    private static final String PATH_MEETING_ID = "meetingId";
+    private static final String PATH_USER_ID = "userId";
+
     private final MeetingService meetingService;
 
     public Mono<ServerResponse> schedule(@NonNull final ServerRequest request) {
@@ -26,13 +29,13 @@ public class MeetingHandler {
     }
 
     public Mono<ServerResponse> findById(@NonNull final ServerRequest request) {
-        final UUID meetingId = UUID.fromString(request.pathVariable("meetingId"));
+        final var meetingId = UUID.fromString(request.pathVariable(PATH_MEETING_ID));
         return meetingService.findById(meetingId)
                 .flatMap(meeting -> ServerResponse.ok().bodyValue(meeting));
     }
 
     public Mono<ServerResponse> findByUser(@NonNull final ServerRequest request) {
-        final UUID userId = UUID.fromString(request.pathVariable("userId"));
+        final var userId = UUID.fromString(request.pathVariable(PATH_USER_ID));
         return ServerResponse.ok().body(meetingService.findByUser(userId), MeetingResponse.class);
     }
 }

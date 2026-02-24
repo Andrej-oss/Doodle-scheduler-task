@@ -12,8 +12,6 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   return res.json() as Promise<T>;
 }
 
-// --- Types ---
-
 export interface User {
   id: string;
   username: string;
@@ -56,13 +54,12 @@ export interface MeetingResponse {
   createdAt: string;
 }
 
-// --- API calls ---
-
 export const api = {
   users: {
     create: (body: { username: string; email: string }) =>
       apiFetch<User>('/api/v1/users', { method: 'POST', body: JSON.stringify(body) }),
     get: (userId: string) => apiFetch<User>(`/api/v1/users/${userId}`),
+    search: (q: string) => apiFetch<User[]>(`/api/v1/users/search?q=${encodeURIComponent(q)}`),
   },
   calendars: {
     create: (body: { userId: string; name: string }) =>
