@@ -35,7 +35,6 @@ function slotCoversHour(slot: TimeSlot, day: Date, hour: number): boolean {
 export default function CalendarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [week, setWeek] = useState(new Date());
-  const [creating, setCreating] = useState<{ day: Date; hour: number } | null>(null);
   const queryClient = useQueryClient();
 
   const weekDays = getWeekDays(week);
